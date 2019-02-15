@@ -160,6 +160,19 @@ die horribly
 	bwin32=false; AC_MSG_RESULT(no),
 )
 
+dnl - check if the macro __midipix__ is defined on this compiler.
+dnl - (this is how we check for a midipix version of GCC)
+AC_MSG_CHECKING(for MIDIPIX)
+AC_TRY_COMPILE(,
+	[
+#ifndef __midipix__
+die horribly
+#endif
+	],
+	midipix=true; AC_MSG_RESULT(yes),
+	midipix=false; AC_MSG_RESULT(no),
+)
+
 dnl - check if the macro __CYGWIN__ is defined on this compiler.
 dnl - (this is how we check for a cygwin version of GCC)
 AC_MSG_CHECKING(for CYGWIN)
@@ -326,7 +339,8 @@ fi
 
 AM_CONDITIONAL(BUILD_WIN32, test x$bwin32 = xtrue)
 AM_CONDITIONAL(BUILD_CYGWIN, test x$cygwin = xtrue)
-AM_CONDITIONAL(BUILD_WITH_NO_UNDEFINED, test x$bwin32 = xtrue || test x$cygwin = xtrue)
+AM_CONDITIONAL(BUILD_MIDIPIX, test x$midipix = xtrue)
+AM_CONDITIONAL(BUILD_WITH_NO_UNDEFINED, test x$bwin32 = xtrue || test x$cygwin = xtrue || test x$midipix = xtrue)
 
 if test x$bwin32 = xtrue; then
    AC_SEARCH_LIBS([getservbyname],[ws2_32])
@@ -503,6 +517,12 @@ if test "x$ac_cv_header_sys_event_h" = "xyes"; then
 	if test "x$havekqueue" = "xyes" ; then
 		AC_MSG_CHECKING(for working kqueue)
 		AC_TRY_RUN(
+#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
 #include <sys/types.h>
 #include <sys/time.h>
 #include <sys/event.h>
@@ -518,7 +538,7 @@ main(int argc, char **argv)
 	int fd[[2]];
 	struct kevent ev;
 	struct timespec ts;
-	char buf[[8000]];
+	char buf[[80000]];
 
 	if (pipe(fd) == -1)
 		exit(1);
@@ -644,6 +664,7 @@ AC_CHECK_SIZEOF(short)
 AC_CHECK_SIZEOF(size_t)
 AC_CHECK_SIZEOF(void *)
 AC_CHECK_SIZEOF(off_t)
+AC_CHECK_SIZEOF(time_t)
 
 AC_CHECK_TYPES([struct in6_addr, struct sockaddr_in6, sa_family_t, struct addrinfo, struct sockaddr_storage], , ,
 [#define _GNU_SOURCE
@@ -706,7 +727,11 @@ AC_CHECK_TYPES([struct linger],,,
 AC_MSG_CHECKING([for socklen_t])
 AC_TRY_COMPILE([
  #include <sys/types.h>
- #include <sys/socket.h>],
+ #ifdef _WIN32
+ #include <ws2tcpip.h>
+ #else
+ #include <sys/socket.h>
+ #endif],
   [socklen_t x;],
   AC_MSG_RESULT([yes]),
   [AC_MSG_RESULT([no])
@@ -714,21 +739,23 @@ AC_TRY_COMPILE([
 	[Define to unsigned int if you dont have it])]
 )
 
+# __func__/__FUNCTION__ is not a macros in general
 AC_MSG_CHECKING([whether our compiler supports __func__])
 AC_TRY_COMPILE([],
- [ const char *cp = __func__; ],
- AC_MSG_RESULT([yes]),
- AC_MSG_RESULT([no])
- AC_MSG_CHECKING([whether our compiler supports __FUNCTION__])
- AC_TRY_COMPILE([],
-   [ const char *cp = __FUNCTION__; ],
-   AC_MSG_RESULT([yes])
-   AC_DEFINE(__func__, __FUNCTION__,
-         [Define to appropriate substitue if compiler doesnt have __func__]),
-   AC_MSG_RESULT([no])
-   AC_DEFINE(__func__, __FILE__,
-         [Define to appropriate substitue if compiler doesnt have __func__])))
-
+  [ const char *cp = __func__; ],
+  [ AC_DEFINE(HAVE___func__, 1, [Define to 1 if compiler have __func__])
+    AC_MSG_RESULT([yes])
+  ],
+  AC_MSG_RESULT([no])
+)
+AC_MSG_CHECKING([whether our compiler supports __FUNCTION__])
+AC_TRY_COMPILE([],
+  [ const char *cp = __FUNCTION__; ],
+  [ AC_DEFINE(HAVE___FUNCTION__, 1, [Define to 1 if compiler have __FUNCTION__])
+    AC_MSG_RESULT([yes])
+  ],
+  AC_MSG_RESULT([no])
+)
 
 # check if we can compile with pthreads
 have_pthreads=no
@@ -796,7 +823,8 @@ if test x$enable_gcc_warnings != xno && test "$GCC" = "yes"; then
 #error
 #endif])], have_clang=yes, have_clang=no)
 
-  CFLAGS="$CFLAGS -W -Wfloat-equal -Wundef -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -Wredundant-decls -Wchar-subscripts -Wcomment -Wformat -Wwrite-strings -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wbad-function-cast -Wswitch"
+  # -W is the same as -Wextra
+  CFLAGS="$CFLAGS -W -Wfloat-equal -Wundef -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wwrite-strings -Wredundant-decls -Wmissing-declarations -Wredundant-decls -Wnested-externs -Wbad-function-cast"
   if test x$enable_gcc_warnings = xyes; then
     CFLAGS="$CFLAGS -Werror"
   fi

@@ -298,6 +298,24 @@ EVENT2_EXPORT_SYMBOL
 void evhttp_set_bevcb(struct evhttp *http,
     struct bufferevent *(*cb)(struct event_base *, void *), void *arg);
 
+
+/**
+   Set a callback which allows the user to note or throttle incoming requests.
+
+   The requests are not populated with HTTP level information. They
+   are just associated to a connection.
+
+   If the callback returns -1, the associated connection is terminated
+   and the request is closed.
+
+   @param http the evhttp server object for which to set the callback
+   @param cb the callback to invoke for incoming connections
+   @param arg an context argument for the callback
+ */
+EVENT2_EXPORT_SYMBOL
+void evhttp_set_newreqcb(struct evhttp *http,
+    int (*cb)(struct evhttp_request*, void *), void *arg);
+
 /**
    Adds a virtual host to the http server.
 
@@ -930,14 +948,14 @@ char *evhttp_uriencode(const char *str, ev_ssize_t size, int space_to_plus);
 
 /**
   Helper function to sort of decode a URI-encoded string.  Unlike
-  evhttp_get_decoded_uri, it decodes all plus characters that appear
+  evhttp_uridecode, it decodes all plus characters that appear
   _after_ the first question mark character, but no plusses that occur
   before.  This is not a good way to decode URIs in whole or in part.
 
   The returned string must be freed by the caller
 
   @deprecated  This function is deprecated; you probably want to use
-     evhttp_get_decoded_uri instead.
+     evhttp_uridecode instead.
 
   @param uri an encoded URI
   @return a newly allocated unencoded URI or NULL on failure
@@ -986,6 +1004,33 @@ char *evhttp_uridecode(const char *uri, int decode_plus,
 EVENT2_EXPORT_SYMBOL
 int evhttp_parse_query(const char *uri, struct evkeyvalq *headers);
 
+/** @see evhttp_parse_query_str_flags() */
+EVENT2_EXPORT_SYMBOL
+int evhttp_parse_query_str(const char *uri, struct evkeyvalq *headers);
+
+/** Tolerate queries that are not standard conformant.
+ *
+ * Here are some examples:
+ *
+ * - test=123&test2
+ *   with with this flag test2 will be present in the output headers
+ *
+ * - test=123&&test2=1
+ *   will parse the query with this flag
+ *
+ * - test=123&=456&test2=1
+ *   will parse the queyr with this flag, however there won't be empty key
+ *   present
+ */
+#define EVHTTP_URI_QUERY_NONCONFORMANT 0x01
+/** Prefer last value over the first from query args
+ *
+ * Example: test=123&test=456
+ * Without: test=123
+ * With   : test=456
+ */
+#define EVHTTP_URI_QUERY_LAST_VAL 0x02
+
 /**
    Helper function to parse out arguments from the query portion of an
    HTTP URI.
@@ -1001,10 +1046,11 @@ int evhttp_parse_query(const char *uri, struct evkeyvalq *headers);
 
    @param query_parse the query portion of the URI
    @param headers the head of the evkeyval queue
+   @param flags one or more of EVHTTP_URI_QUERY_*
    @return 0 on success, -1 on failure
  */
 EVENT2_EXPORT_SYMBOL
-int evhttp_parse_query_str(const char *uri, struct evkeyvalq *headers);
+int evhttp_parse_query_str_flags(const char *uri, struct evkeyvalq *headers, unsigned flags);
 
 /**
  * Escape HTML character entities in a string.

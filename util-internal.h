@@ -68,8 +68,16 @@ extern "C" {
 #ifdef EVENT__inline
 #define inline EVENT__inline
 #endif
-#if defined(EVENT____func__) && !defined(__func__)
-#define __func__ EVENT____func__
+
+/* Define to appropriate substitute if compiler doesnt have __func__ */
+#if defined(EVENT__HAVE___func__)
+# ifndef __func__
+#  define __func__ __func__
+# endif
+#elif defined(EVENT__HAVE___FUNCTION__)
+# define __func__ __FUNCTION__
+#else
+# define __func__ __FILE__
 #endif
 
 /* A good no-op to use in macro definitions. */
@@ -518,6 +526,17 @@ evutil_socket_t evutil_eventfd_(unsigned initval, int flags);
 #endif
 
 void evutil_memclear_(void *mem, size_t len);
+
+struct in_addr;
+struct in6_addr;
+
+/* This is a any, loopback, link-local, multicast */
+EVENT2_EXPORT_SYMBOL
+int evutil_v4addr_is_local_(const struct in_addr *in);
+/* This is a reserved, ipv4compat, ipv4map, loopback,
+ * link-local, multicast, or unspecified address. */
+EVENT2_EXPORT_SYMBOL
+int evutil_v6addr_is_local_(const struct in6_addr *in);
 
 #ifdef __cplusplus
 }

@@ -107,6 +107,30 @@ PLATFORM_DEPENDENT_SRC = \
 	arc4random.c \
 	epoll_sub.c
 
+CMAKE_FILES = \
+	cmake/AddCompilerFlags.cmake \
+	cmake/AddEventLibrary.cmake \
+	cmake/CheckConstExists.cmake \
+	cmake/CheckFileOffsetBits.c \
+	cmake/CheckFileOffsetBits.cmake \
+	cmake/CheckFunctionExistsEx.c \
+	cmake/CheckFunctionExistsEx.cmake \
+	cmake/CheckFunctionKeywords.cmake \
+	cmake/CheckPrototypeDefinition.c.in \
+	cmake/CheckPrototypeDefinition.cmake \
+	cmake/CheckWorkingKqueue.cmake \
+	cmake/CodeCoverage.cmake \
+	cmake/COPYING-CMAKE-SCRIPTS \
+	cmake/Copyright.txt \
+	cmake/FindGit.cmake \
+	cmake/LibeventConfigBuildTree.cmake.in \
+	cmake/LibeventConfig.cmake.in \
+	cmake/LibeventConfigVersion.cmake.in \
+	cmake/VersionViaGit.cmake \
+	event-config.h.cmake \
+	evconfig-private.h.cmake \
+	CMakeLists.txt
+
 EXTRA_DIST = \
 	ChangeLog-1.4 \
 	ChangeLog-2.0 \
@@ -119,6 +143,7 @@ EXTRA_DIST = \
 	make-event-config.sed \
 	whatsnew-2.0.txt \
 	whatsnew-2.1.txt \
+	$(CMAKE_FILES) \
 	$(PLATFORM_DEPENDENT_SRC)
 
 LIBEVENT_LIBS_LA = libevent.la libevent_core.la libevent_extra.la
@@ -231,7 +256,11 @@ NO_UNDEFINED =
 MAYBE_CORE =
 endif
 
-GENERIC_LDFLAGS = -version-info $(VERSION_INFO) $(RELEASE) $(NO_UNDEFINED)
+AM_CFLAGS = $(LIBEVENT_CFLAGS)
+AM_CPPFLAGS = -I$(srcdir)/compat -I./include -I$(srcdir)/include $(SYS_INCLUDES) $(LIBEVENT_CPPFLAGS)
+AM_LDFLAGS = $(LIBEVENT_LDFLAGS)
+
+GENERIC_LDFLAGS = -version-info $(VERSION_INFO) $(RELEASE) $(NO_UNDEFINED) $(AM_LDFLAGS)
 
 libevent_la_SOURCES = $(CORE_SRC) $(EXTRAS_SRC)
 libevent_la_LIBADD = @LTLIBOBJS@ $(SYS_LIBS)
@@ -268,7 +297,6 @@ noinst_HEADERS +=				\
 	defer-internal.h			\
 	epolltable-internal.h			\
 	evbuffer-internal.h			\
-	evconfig-private.h			\
 	event-internal.h			\
 	evmap-internal.h			\
 	evrpc-internal.h			\
@@ -301,8 +329,6 @@ include_HEADERS = $(EVENT1_HDRS)
 else
 noinst_HEADERS += $(EVENT1_HDRS)
 endif
-
-AM_CPPFLAGS = -I$(srcdir)/compat -I$(srcdir)/include -I./include $(SYS_INCLUDES)
 
 verify: check
 
